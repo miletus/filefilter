@@ -1,0 +1,9 @@
+Enhancements
+> The include/exclude flags are a part of the inex executable, not a part of the filefilter package. Those flags should be moved.
+> Add the ability to automatically determine the line endings by looking through the first buffer. Include /n, /r, /r/n and Unicode line endings.
+> Add a flag for selecting whether filters can overlap each other or cannot. Currently they can.
+> When the buffer is not big enough to hold complete lines, the displayed error is "Short Buffer". It would be helpful to include the beginning of text in the buffer to help the user understand where the lines are too long.
+
+
+Bugs
+> In some cases the command line is not parsed properly. The dispalyed error is invalid syntax.
