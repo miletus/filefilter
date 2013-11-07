@@ -29,7 +29,7 @@ func SetLineSeparator(newLineSeparator string) {
 	lineSeparator = newLineSeparator
 }
 
-// ErrShortBUffer means that the internal buffer is too small to hold a complete line from the reader.
+// ErrShortBuffer means that the internal buffer is too small to hold a complete line from the reader.
 var ErrShortBuffer error = errors.New("Short Buffer")
 
 // MatchHandler is a function used in a Filter object. The MatchHandler takes the match to the
@@ -37,7 +37,7 @@ var ErrShortBuffer error = errors.New("Short Buffer")
 // a Regexp.FindSubmatchIndex call in the Filter.
 type MatchHandler func(indicies []int, text []byte) (outText []byte, err error)
 
-// EchoMh is a MatchHandler whose outText is equal to the text that was matched with with the
+// EchoMh is a MatchHandler whose outText is equal to the text that was matched with the
 // regular expression.
 var EchoMh = func(indicies []int, text []byte) (outText []byte, err error) {
 	// Check the input.
@@ -331,7 +331,7 @@ func nextMatch(buffer []byte, filter *Filter, offset int) (match *FilterMatch, e
 }
 
 // reportMatch will write information about a match to stdout to help in debugging regular expression
-// matches. It will probably be called for each match found when the verbose flag is set.
+// matches. It will be called for each match found when the verbose flag is set.
 func reportMatch(match *FilterMatch, filter *Filter, buffer []byte) {
 	fmt.Printf("%q matches from index %d to %d\n", filter.expr, match.span[0], match.span[1])
 	fmt.Printf("Input text  = %q\n", buffer[match.span[0]:match.span[1]])

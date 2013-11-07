@@ -51,7 +51,8 @@ func init() {
 	flag.BoolVar(&helpFlag, "help", false, "List the default usage and flags.")
 	flag.BoolVar(&helpFlag, "h", false, "List the default usage and flags.")
 	flag.Int64Var(&sizeFlag, "size", 100, "The size in KB of the memory buffer used for reading the file")
-	flag.StringVar(&eolFlag, "eol", "\n", "The end-of-line string")
+	// The default value for eolFLag needs to be quoted (i.e \\n instead of \n) to match what the shell will do to a command line parameter.
+	flag.StringVar(&eolFlag, "eol", "\\n", "The end-of-line string")
 	flag.BoolVar(&verboseFlag, "verbose", false, "Write information useful for debugging to stdout")
 	name := path.Base(os.Args[0])
 	flag.Usage = func() {
@@ -179,6 +180,8 @@ func GetBufferSize() int64 {
 func GetEol() string {
 	eol, err := strconv.Unquote("\"" + eolFlag + "\"")
 	if err != nil {
+		// Give the user more information if we have it about why Unquote failed.
+		err = unquoteErrorExplanation(eolFlag, err)
 		log.Fatal(err)
 	}
 	return eol
@@ -196,5 +199,5 @@ func unquoteErrorExplanation(s string, err error) error {
 	if match, _ := regexp.MatchString("[^\\]\\[^\\abfnrtvxuU0-7'\"]", s); match == true {
 		return errors.New("Regular expression contains an unquoted backslash. Try \\\\ in the input string instead of \\.")
 	}
-	return err
+	return fmt.Errorf("strconv.Unquote error:%s. Offending string is %s", err, s)
 }
