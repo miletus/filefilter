@@ -4,6 +4,3 @@ Enhancements
 > Add a flag for selecting whether filters can overlap each other or cannot. Currently they can.
 > When the buffer is not big enough to hold complete lines, the displayed error is "Short Buffer". It would be helpful to include the beginning of text in the buffer to help the user understand where the lines are too long.
 
-
-Bugs
-> In some cases the command line is not parsed properly. The dispalyed error is invalid syntax.
