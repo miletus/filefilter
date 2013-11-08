@@ -271,6 +271,10 @@ func applyFilters(buffer []byte, isLastBuffer bool, filters []*Filter,
 		// Write the result
 		if _, err := output.Write(winner.textOut); err != nil {
 			return 0, err
+		} else if bytes.HasSuffix(winner.textOut, []byte(lineSeparator)) == false {
+			// Make sure each match has a lineSeparator. May find out that there are cases
+			// where you don't want to do this. Probably should add a flag to control this.
+			output.Write([]byte(lineSeparator))
 		}
 	} // End of for {}
 }
