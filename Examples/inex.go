@@ -37,7 +37,7 @@ func main() {
 func buildFilters() (filters []*filefilter.Filter, defaultFilter *filefilter.Filter, err error) {
 
 	// Set the line separator
-	filefilter.SetLineSeparator(filefilter.GetEol())
+	filefilter.SetNewLine(filefilter.GetEol())
 	// The include filters process the matched data with the echo match handler.
 	filters, err = loadFilters(filefilter.GetIncludes(), filefilter.EchoMh)
 	if err != nil {
@@ -69,7 +69,7 @@ func loadFilters(regexes []string, mh filefilter.MatchHandler) ([]*filefilter.Fi
 	filters := make([]*filefilter.Filter, len(regexes))
 	var err error
 	for i, regex := range regexes {
-		if filters[i], err = filefilter.NewFilter(regex, mh); err != nil {
+		if filters[i], err = filefilter.NewFilter(regex, mh, "\n"); err != nil {
 			return nil, err
 		}
 	}

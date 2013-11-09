@@ -50,9 +50,8 @@ func init() {
 	flag.Var(&excludeFlag, "e", "Don't write text matching the specified regular expression to the output (short version).")
 	flag.BoolVar(&helpFlag, "help", false, "List the default usage and flags.")
 	flag.BoolVar(&helpFlag, "h", false, "List the default usage and flags.")
-	flag.Int64Var(&sizeFlag, "size", 100, "The size in KB of the memory buffer used for reading the file")
-	// The default value for eolFLag needs to be quoted (i.e \\n instead of \n) to match what the shell will do to a command line parameter.
-	flag.StringVar(&eolFlag, "eol", "\\n", "The end-of-line string")
+	flag.Int64Var(&sizeFlag, "size", 100, "The size in KB of the memory buffer used for reading the file"
+	flag.StringVar(&eolFlag, "eol", "", "The end-of-line string. If the eol flag is not used then the eol will be detected in the input text.")
 	flag.BoolVar(&verboseFlag, "verbose", false, "Write information useful for debugging to stdout")
 	name := path.Base(os.Args[0])
 	flag.Usage = func() {
