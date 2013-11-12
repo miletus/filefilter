@@ -12,8 +12,6 @@ import (
 	"path"
 	"regexp"
 	"strconv"
-
-//	"strings"
 )
 
 // regexs is a slice of regular expression strings.
@@ -50,7 +48,7 @@ func init() {
 	flag.Var(&excludeFlag, "e", "Don't write text matching the specified regular expression to the output (short version).")
 	flag.BoolVar(&helpFlag, "help", false, "List the default usage and flags.")
 	flag.BoolVar(&helpFlag, "h", false, "List the default usage and flags.")
-	flag.Int64Var(&sizeFlag, "size", 100, "The size in KB of the memory buffer used for reading the file"
+	flag.Int64Var(&sizeFlag, "size", 100, "The size in KB of the memory buffer used for reading the file")
 	flag.StringVar(&eolFlag, "eol", "", "The end-of-line string. If the eol flag is not used then the eol will be detected in the input text.")
 	flag.BoolVar(&verboseFlag, "verbose", false, "Write information useful for debugging to stdout")
 	name := path.Base(os.Args[0])
@@ -62,31 +60,20 @@ func init() {
 				"-exclude and -include flags are followed by a quoted string with a single regular expression. \n"+
 				"Use single quotes for the string on the command line.\n"+
 				"Multiple -include and -exclude flags are allowed.\n"+
-				"If the regular expression is multi-line, use \\n to represent a line break in your regular \n"+
-				"expression string even if the input has a different line break. \n"+
-				"Set the actual line break that's in the input text with the -eol flag.\n"+
+				"Set the actual line break that's in the input text with the -eol flag. If there is no eol flag the program will detect "+
+				"the newline used in the text.\n"+
 				"You can embed regular expression processing flags in your expression. '(?i)USA' will match with case insensitivity.\n"+
 				"\n"+
 				"Example\n"+
 				"%s -exclude '(?m)^.*aaaa.*\\n' -exclude '(?m)^.*bbbb.*\\n' input.txt output.txt\n"+
 				"will copy all the complete lines of text from input.txt to output.txt except for lines with aaaa or bbbb in them.\n\n",
 			name, name, name)
-		// 	"%s [flags] [input file] [output file]\n"+
-		// 	"If input and/or output files are not given, stdin and stout are used.\n"+
-		// 	"-exclude and -include flags are followed by a quoted string with a single regular expression. Use single\n "+
-		// 	"quotes for the string.\n "+
-		// 	"Multiple -include and -exclude flags are allowed. \n"+
-		// 	"If the regular expression is multi-line, use \\n to match the line break You can set the line break in the input with with -eol\n"+
-		// 	"You can embed regular expression processing flags in your expression. For example '(?i)USA' will match with case insensitivity.\n"+
-		// 	"Example: %s -exclude '^.*aaaa.*\\n, ^.*bbbb.*\\n' a.txt b.txt\n"+
-		// 	"will copy all the complete lines of text from a.txt to b.txt except for the lines with aaaa or bbbb in them.\n\n",
-		// name, name, name)
 		fmt.Fprintf(os.Stderr, "Flags\n")
 		flag.PrintDefaults()
 	}
 }
 
-// Set is the method to set the flag value for flags of type regexes. It's part of the flag.Value interface.
+// Set will be called by the flag package for flags of type regexes. It's part of the flag.Value interface.
 // Set's argument is a string to be parsed to set the flag.
 func (rs *regexes) Set(value string) error {
 	// Value is a string with a single regular expression. Escape characters such as \n in the string will have been quoted by the

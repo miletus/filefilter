@@ -107,7 +107,10 @@ func NewFilter(expr string, mh MatchHandler, newLine string) (*Filter, error) {
 	var f Filter
 	var err error
 	if len(expr) < 1 {
-		panic("Empty regular expression string ")
+		return nil, errors.New("Empty regular expression string!")
+	}
+	if mh == nil {
+		return nil, errors.New("Nil MatchHandler function not allowed!")
 	}
 	f.expr = expr
 	f.mh = mh
@@ -152,6 +155,9 @@ func NewPassAllFilter() (*Filter, error) {
 // bufferSize is the size of the buffer in bytes to use for i/o.
 func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultFilter *Filter, bufferSize int64) (err error) {
 	// Check to make sure the input data is usable.
+	if reader == nil || output == nil {
+		return errors.New("nil input or output!")
+	}
 	if bufferSize <= 0 {
 		return errors.New("bufferSize <= 0!")
 	}
@@ -161,10 +167,6 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 	for _, filter := range filters {
 		if filter == nil {
 			return errors.New("Nil *Filter in list of filters!")
-		} else {
-			if filter.nLines == 0 {
-				return errors.New("Filter processes 0 lines!")
-			}
 		}
 	}
 	// Save room in the input buffer for a newLine in case have to add one to the last buffer. The maximum size
