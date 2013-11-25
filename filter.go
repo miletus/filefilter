@@ -17,6 +17,21 @@ import (
 	"unicode/utf8"
 )
 
+// NewLineChars are the new line (or end-of-line) characters that will be recognized by the
+// eol-finding routine, findNewLineChar
+// From Wikipedia:
+// The Unicode standard defines a large number of characters that conforming applications should recognize as line terminators:[4]
+// LF:    Line Feed, U+000A
+// VT:    Vertical Tab, U+000B
+// FF:    Form Feed, U+000C
+// CR:    Carriage Return, U+000D
+// CR+LF: CR (U+000D) followed by LF (U+000A)
+// NEL:   Next Line, U+0085
+// LS:    Line Separator, U+2028
+// PS:    Paragraph Separator, U+2029
+// findNewLineChar will also recognize CR-LF as a new line.
+const NewLineChars = "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
+
 // newLine in the input data. It can be set with SetNewLine. If it is not set then ProcessText will
 // automatically detect the text's newLine from the first buffer of text.
 var newLine string = "\n"
@@ -189,7 +204,7 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 		buffer = buffer[:nUnprocessed]
 		// Check to see whether we've detected the line separator yet. If not then look through the buffer to find it.
 		if len(newLine) == 0 {
-			newLine = findNewLine(buffer)
+			newLine = findNewLineChar(buffer)
 		}
 		if firsttime {
 			// Make sure that all the filters have the correct newLine.
@@ -385,7 +400,7 @@ func reportMatch(match *FilterMatch, filter *Filter, buffer []byte) {
 
 // Look through the buffer to find the newLine character. The discovered newLine is returned.
 // If no standard newLines are found in buffer then filefilter.defaultNewLine will be returned.
-func findNewLine(buffer []byte) (sep string) {
+func findNewLineChar(buffer []byte) (sep string) {
 	// From Wikipedia:
 	// The Unicode standard defines a large number of characters that conforming applications should recognize as line terminators:[4]
 	// LF:    Line Feed, U+000A
@@ -396,15 +411,16 @@ func findNewLine(buffer []byte) (sep string) {
 	// NEL:   Next Line, U+0085
 	// LS:    Line Separator, U+2028
 	// PS:    Paragraph Separator, U+2029
-	separators := "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
+	NewLineChars := "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
 	// A map to keep track of the # of eol characters.
-	eolCount := make(map[string]int, utf8.RuneCountInString(separators))
+	eolCount := make(map[string]int, utf8.RuneCountInString(NewLineChars))
 	// Start buffer index at one because when find a \n going to check to see if the character
 	// before it is a \r. Starting at 1 means we won't have an error if \n is the first character.
+	// Of course it also means that we'll miss the first character if it's a line
 	var index int = 1
 	const maxIter = 10
 	for iter := 0; iter < maxIter; iter++ {
-		subIndex := bytes.IndexAny(buffer[index:], separators)
+		subIndex := bytes.IndexAny(buffer[index:], NewLineChars)
 		if subIndex == -1 {
 			// Out of characters in buffer.
 			break
@@ -437,7 +453,7 @@ func findNewLine(buffer []byte) (sep string) {
 		// maxCount == 0
 		sep = defaultNewLine
 		if IsVerbose() {
-			fmt.Printf("No line separators found in buffer. Using default\n")
+			fmt.Printf("No line NewLineChars found in buffer. Using default\n")
 		}
 	}
 	return sep
