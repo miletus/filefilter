@@ -414,26 +414,32 @@ func findNewLineChar(buffer []byte) (sep string) {
 	NewLineChars := "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
 	// A map to keep track of the # of newLine characters.
 	newLineCount := make(map[string]int, utf8.RuneCountInString(NewLineChars))
-	// Start buffer index at one because when find a \n going to check to see if the character
-	// before it is a \r. Starting at 1 means we won't have an error if \n is the first character.
-	// Of course it also means that we'll miss the first character if it's a line
-	var index int = 1
-	const maxIter = 10
-	for iter := 0; iter < maxIter; iter++ {
-		subIndex := bytes.IndexAny(buffer[index:], NewLineChars)
-		if subIndex == -1 {
+	// offset is the starting index in the buffer for the next newLine search
+	// in the loop
+	var offset int = 0
+	// newLinesForDone is the number of newLines of any type to find before stopping the search.
+	// Should find one newLine each time through the loop.
+	const newLinesForDone = 10
+	for nNewLines := 0; nNewLines < newLinesForDone; nNewLines++ {
+		newLineOffset := bytes.IndexAny(buffer[offset:], NewLineChars)
+		if newLineOffset == -1 {
 			// Out of characters in buffer.
 			break
 		} else {
-			index += subIndex
+			offset += newLineOffset
 		}
 		// Check whether we have \r\n
-		if buffer[index-1] == '\r' && buffer[index] == '\n' {
+		if offset > 0 && buffer[offset-1] == '\r' && buffer[offset] == '\n' {
 			newLineCount["\r\n"] += 1
+			offset += 2
 		} else {
-			r, _ := utf8.DecodeRune(buffer[index:])
+			r, size := utf8.DecodeRune(buffer[offset:])
 			if r != utf8.RuneError {
 				newLineCount[string(r)] += 1
+				offset += size
+			} else {
+				// Something went wrong. Advance the offset to step past whatever it was.
+				offset++
 			}
 		}
 	}
@@ -447,7 +453,7 @@ func findNewLineChar(buffer []byte) (sep string) {
 	}
 	if maxCount > 0 {
 		if IsVerbose() {
-			fmt.Printf("%s chosen as line separator with %d/%d instances.\n", strconv.Quote(sep), maxCount, maxIter)
+			fmt.Printf("%s chosen as line separator with %d/%d instances.\n", strconv.Quote(sep), maxCount, newLinesForDone)
 		}
 	} else {
 		// maxCount == 0
