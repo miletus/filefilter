@@ -34,8 +34,8 @@ var verboseFlag bool
 // sizeFlag is size of the in-memory buffer used for reading the file in kB.
 var sizeFlag int64
 
-// eolFlag is the end-of-line string specified on the command line.
-var eolFlag string
+// newLineFlag is the newLine string specified on the command line.
+var newLineFlag string
 
 // areFlagsProcessed keeps track of whether ProcessFlags has been called.
 var areFlagsProcessed bool = false
@@ -49,7 +49,7 @@ func init() {
 	flag.BoolVar(&helpFlag, "help", false, "List the default usage and flags.")
 	flag.BoolVar(&helpFlag, "h", false, "List the default usage and flags.")
 	flag.Int64Var(&sizeFlag, "size", 100, "The size in KB of the memory buffer used for reading the file")
-	flag.StringVar(&eolFlag, "eol", "", "The end-of-line string. If the eol flag is not used then the eol will be detected in the input text.")
+	flag.StringVar(&newLineFlag, "newline", "", "The new line string. If the newline flag is not used then the newline will be detected in the input text.")
 	flag.BoolVar(&verboseFlag, "verbose", false, "Write information useful for debugging to stdout")
 	name := path.Base(os.Args[0])
 	flag.Usage = func() {
@@ -60,7 +60,7 @@ func init() {
 				"-exclude and -include flags are followed by a quoted string with a single regular expression. \n"+
 				"Use single quotes for the string on the command line.\n"+
 				"Multiple -include and -exclude flags are allowed.\n"+
-				"Set the actual line break that's in the input text with the -eol flag. If there is no eol flag the program will detect "+
+				"Set the actual line break that's in the input text with the -newline flag. If there is no newline flag the program will detect "+
 				"the newline used in the text.\n"+
 				"You can embed regular expression processing flags in your expression. '(?i)USA' will match with case insensitivity.\n"+
 				"\n"+
@@ -163,14 +163,14 @@ func GetBufferSize() int64 {
 }
 
 // Get the end-of-line character.
-func GetEol() string {
-	eol, err := strconv.Unquote("\"" + eolFlag + "\"")
+func GetnewLine() string {
+	newLine, err := strconv.Unquote("\"" + newLineFlag + "\"")
 	if err != nil {
 		// Give the user more information if we have it about why Unquote failed.
-		err = unquoteErrorExplanation(eolFlag, err)
+		err = unquoteErrorExplanation(newLineFlag, err)
 		log.Fatal(err)
 	}
-	return eol
+	return newLine
 }
 
 func IsVerbose() bool {

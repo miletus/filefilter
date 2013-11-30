@@ -18,7 +18,7 @@ import (
 )
 
 // NewLineChars are the new line (or end-of-line) characters that will be recognized by the
-// eol-finding routine, findNewLineChar
+// newLine-finding routine, findNewLineChar
 // From Wikipedia:
 // The Unicode standard defines a large number of characters that conforming applications should recognize as line terminators:[4]
 // LF:    Line Feed, U+000A
@@ -412,8 +412,8 @@ func findNewLineChar(buffer []byte) (sep string) {
 	// LS:    Line Separator, U+2028
 	// PS:    Paragraph Separator, U+2029
 	NewLineChars := "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
-	// A map to keep track of the # of eol characters.
-	eolCount := make(map[string]int, utf8.RuneCountInString(NewLineChars))
+	// A map to keep track of the # of newLine characters.
+	newLineCount := make(map[string]int, utf8.RuneCountInString(NewLineChars))
 	// Start buffer index at one because when find a \n going to check to see if the character
 	// before it is a \r. Starting at 1 means we won't have an error if \n is the first character.
 	// Of course it also means that we'll miss the first character if it's a line
@@ -429,17 +429,17 @@ func findNewLineChar(buffer []byte) (sep string) {
 		}
 		// Check whether we have \r\n
 		if buffer[index-1] == '\r' && buffer[index] == '\n' {
-			eolCount["\r\n"] += 1
+			newLineCount["\r\n"] += 1
 		} else {
 			r, _ := utf8.DecodeRune(buffer[index:])
 			if r != utf8.RuneError {
-				eolCount[string(r)] += 1
+				newLineCount[string(r)] += 1
 			}
 		}
 	}
 	// Find the key with the biggest count
 	maxCount := -1
-	for s, count := range eolCount {
+	for s, count := range newLineCount {
 		if count > maxCount {
 			maxCount = count
 			sep = s
