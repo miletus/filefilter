@@ -56,13 +56,17 @@ func init() {
 		fmt.Fprintf(os.Stderr,
 			"Usage of %s:\n"+
 				"%s [flags] [input file] [output file]\n"+
-				"If input and/or output files are not given, stdin and stout are used.\n"+
-				"-exclude and -include flags are followed by a quoted string with a single regular expression. \n"+
-				"Use single quotes for the string on the command line.\n"+
+				"-exclude and -include flags are followed by a single-quoted string that is a regular expression. \n"+
+				"All the text that matches the include regular expressions is kept. "+
+				"All the text that matches the exclude regular expressions is discarded.\n"+
 				"Multiple -include and -exclude flags are allowed.\n"+
-				"Set the actual line break that's in the input text with the -newline flag. If there is no newline flag the program will detect "+
-				"the newline used in the text.\n"+
 				"You can embed regular expression processing flags in your expression. '(?i)USA' will match with case insensitivity.\n"+
+				"If input and/or output files are not given, stdin and stout are used.\n"+
+				"Set the actual line break that's in the input text with the -newline flag. If set that new line will be used \n"+
+				"for both the regular expression strings as well as the input text.\n"+
+				"If there is no new line flag the program will detect the new line used in the regular expressions \n"+
+				"and the text. They can be different but all the new lines in the regular expressions must be \n"+
+				"the same and the text can have only one type of new line.\n"+
 				"\n"+
 				"Example\n"+
 				"%s -exclude '(?m)^.*aaaa.*\\n' -exclude '(?m)^.*bbbb.*\\n' input.txt output.txt\n"+
@@ -163,7 +167,7 @@ func GetBufferSize() int64 {
 }
 
 // Get the end-of-line character.
-func GetnewLine() string {
+func GetNewLine() string {
 	newLine, err := strconv.Unquote("\"" + newLineFlag + "\"")
 	if err != nil {
 		// Give the user more information if we have it about why Unquote failed.

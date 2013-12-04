@@ -1,5 +1,12 @@
 // filefilter will process a file (or any io.Reader) by applying regular expression based "filters"
-// to the file. A filefilter.Filter has both the regular expression and the code to process matches to the
+// to the file.
+// filefilter has several advantages over simply applying a regular expression replace method to a buffer.
+// 1) Multiple regular expressions can be applied. The outputs will be in order of the location in the input
+//    text that was matched.
+// 2) The function for processing the input text can be arbitrary.
+// 3) All of the input text does not have to fit into memory.
+// 4) filefilter can determine the new line characters from the input text.
+//A filefilter.Filter has both the regular expression and the code to process matches to the
 // regex.
 // The ProcessText method takes a text source, breaks it into chunks and passes each chunk to applyFilters.
 // applyFilters matches each Filter object against the chunk and writes the text from Filter with the
@@ -17,8 +24,8 @@ import (
 	"unicode/utf8"
 )
 
-// NewLineChars are the new line (or end-of-line) characters that will be recognized by the
-// newLine-finding routine, findNewLineChar
+// NewLineChars are the new line (or end-of-line) characters that can be recognized by the
+// newLine-finding routine, FindNewLineChar
 // From Wikipedia:
 // The Unicode standard defines a large number of characters that conforming applications should recognize as line terminators:[4]
 // LF:    Line Feed, U+000A
@@ -29,20 +36,11 @@ import (
 // NEL:   Next Line, U+0085
 // LS:    Line Separator, U+2028
 // PS:    Paragraph Separator, U+2029
-// findNewLineChar will also recognize CR-LF as a new line.
+// FindNewLineChar will also recognize CR-LF as a new line.
 const NewLineChars = "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
-
-// newLine in the input data. It can be set with SetNewLine. If it is not set then ProcessText will
-// automatically detect the text's newLine from the first buffer of text.
-var newLine string = "\n"
 
 // defaultNewLine is used if no newLine is specified or detected in the input text.
 var defaultNewLine string = "\n"
-
-// Change the value of filefilter.newLine.
-func SetNewLine(newNewLine string) {
-	newLine = newNewLine
-}
 
 // ErrShortBuffer means that the internal buffer is too small to hold a complete line from the reader.
 var ErrShortBuffer error = errors.New("Short Buffer")
@@ -124,9 +122,6 @@ func NewFilter(expr string, mh MatchHandler, newLine string) (*Filter, error) {
 	if len(expr) < 1 {
 		return nil, errors.New("Empty regular expression string!")
 	}
-	if mh == nil {
-		return nil, errors.New("Nil MatchHandler function not allowed!")
-	}
 	f.expr = expr
 	f.mh = mh
 	f.newl = newLine
@@ -168,7 +163,10 @@ func NewPassAllFilter() (*Filter, error) {
 // defaultFilter will be applied if none of the others filters matches the section of the input that is currently
 // being matched. defaultFilter can be nil.
 // bufferSize is the size of the buffer in bytes to use for i/o.
-func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultFilter *Filter, bufferSize int64) (err error) {
+// newLine is the newLine character(s) to user for marking the end of an old line or the beginning of a new one. If newLine
+// is an empty string then ProcessText will determine the newLine character from the input text.
+func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultFilter *Filter, bufferSize int64, newLine string) (err error) {
+	// ------------- Verify Inputs ----------------
 	// Check to make sure the input data is usable.
 	if reader == nil || output == nil {
 		return errors.New("nil input or output!")
@@ -184,6 +182,7 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 			return errors.New("Nil *Filter in list of filters!")
 		}
 	}
+
 	// Save room in the input buffer for a newLine in case have to add one to the last buffer. The maximum size
 	// for a utf8 character is 4 bytes. That's also enough for \r\n.
 	buffer := make([]byte, bufferSize, bufferSize+4)
@@ -192,6 +191,7 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 	nUnprocessed := 0
 	firsttime := true
 	for {
+		// ------------ Read Data --------------
 		// Move the unprocessed data to the beginning of the buffer
 		copy(buffer[:], buffer[len(buffer)-nUnprocessed:])
 		// Try to expand the buffer in case it was contracted earlier.
@@ -202,17 +202,21 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 		nUnprocessed += nRead
 		// Shrink the buffer to fit the new data
 		buffer = buffer[:nUnprocessed]
-		// Check to see whether we've detected the line separator yet. If not then look through the buffer to find it.
-		if len(newLine) == 0 {
-			newLine = findNewLineChar(buffer)
-		}
+
+		// ------------ First buffer --------------
 		if firsttime {
+			// Check to see whether we've detected the line separator yet. If not then look through the buffer to find it.
+			if newLine == "" {
+				newLine, _ = FindNewLineChar(buffer)
+			}
 			// Make sure that all the filters have the correct newLine.
 			for _, f := range filters {
 				f.changeNewLine(newLine)
 			}
 			firsttime = false
 		}
+
+		// -------------- Last buffer ---------------------
 		if err == io.EOF {
 			// There are no more bytes to read. There can still be unprocessed data. If
 			// there is, make sure it's terminated with a newLine.
@@ -223,14 +227,18 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 					buffer = append(buffer, newLine...)
 				}
 				// One last go-round
-				nUnprocessed, err = applyFilters(buffer, true, filters, defaultFilter, output)
+				nUnprocessed, err = applyFilters(buffer, true, filters, defaultFilter, output, newLine)
 			}
 			return err
+
+			// --------------- Error handling
 		} else if err != nil {
 			// Something went wrong with the read
 			return err
+
+			// -------------- Process buffer
 		} else {
-			nUnprocessed, err = applyFilters(buffer, false, filters, defaultFilter, output)
+			nUnprocessed, err = applyFilters(buffer, false, filters, defaultFilter, output, newLine)
 			if err != nil {
 				return err
 			}
@@ -247,13 +255,14 @@ func ProcessText(reader io.Reader, output io.Writer, filters []*Filter, defaultF
 // The defaultFilter's output is only taken if no other filter matches at a lower or the same buffer index. That way text not
 // matched by other filters is written to the output. The expectation is that the defaultFilter matches a single line of text
 // and reproduces that text as output. The defaultFilter can be nil.
+// newLine is the newLine character(s) that will be added to the end of each match output.
 func applyFilters(buffer []byte, isLastBuffer bool, filters []*Filter,
-	defaultFilter *Filter, output io.Writer) (int, error) {
+	defaultFilter *Filter, output io.Writer, newLine string) (int, error) {
 	var err error
 	// Can't process all the way to the end of the buffer until we're sure all the characters
 	// have been read in. That only happens in the last buffer. Before then we'll return with some
 	// of the characters unprocessed.
-	unprocessedIndex := findProcessingLimit(buffer, isLastBuffer, filters)
+	unprocessedIndex := findProcessingLimit(buffer, isLastBuffer, filters, newLine)
 	if unprocessedIndex <= 0 {
 		// Don't have room in the buffer for the number of lines needed by a filter. Client should try again with a
 		// larger buffer.
@@ -298,7 +307,7 @@ func applyFilters(buffer []byte, isLastBuffer bool, filters []*Filter,
 			if IsVerbose() {
 				reportMatch(matches[matchesIndex], filters[matchesIndex], buffer)
 			}
-			// Get the next value from the filter. Use winner.span[1] as the staring index to make sure
+			// Get the next value from the filter. Use winner.span[1] as the starting index to make sure
 			// the next match doesn't overlap the current one.
 			if matches[matchesIndex], err = nextMatch(buffer, filters[matchesIndex], winner.span[1]); err != nil {
 				return 0, err
@@ -324,7 +333,7 @@ func applyFilters(buffer []byte, isLastBuffer bool, filters []*Filter,
 			// Make sure the output text from each match ends in a newLine. While this seems like a good idea now,
 			// I may find out that there are cases where you don't want to do this.
 			// If that happens then add a command line flag to control it.
-			if bytes.HasSuffix(winner.textOut, []byte(newLine)) == false {
+			if len(winner.textOut) > 0 && bytes.HasSuffix(winner.textOut, []byte(newLine)) == false {
 				output.Write([]byte(newLine))
 			}
 
@@ -337,9 +346,9 @@ func applyFilters(buffer []byte, isLastBuffer bool, filters []*Filter,
 // findProcessingLimit finds the last index in the buffer that could be matched by all
 // the filters. For example if you only have two lines left in the buffer but your
 // regular expression matches 3 lines, then that regular expression will never match. But
-// there could be another line that hasn't been read in yet. The solution is to not accept
+// the next line read could cause the regular expression to match. The solution is to not accept
 // any matches past the findProcessingLimit.
-func findProcessingLimit(buffer []byte, isLastBuffer bool, filters []*Filter) int {
+func findProcessingLimit(buffer []byte, isLastBuffer bool, filters []*Filter, newLine string) int {
 	if isLastBuffer {
 		// For the last buffer process all the bytes.
 		return len(buffer)
@@ -400,18 +409,7 @@ func reportMatch(match *FilterMatch, filter *Filter, buffer []byte) {
 
 // Look through the buffer to find the newLine character. The discovered newLine is returned.
 // If no standard newLines are found in buffer then filefilter.defaultNewLine will be returned.
-func findNewLineChar(buffer []byte) (sep string) {
-	// From Wikipedia:
-	// The Unicode standard defines a large number of characters that conforming applications should recognize as line terminators:[4]
-	// LF:    Line Feed, U+000A
-	// VT:    Vertical Tab, U+000B
-	// FF:    Form Feed, U+000C
-	// CR:    Carriage Return, U+000D
-	// CR+LF: CR (U+000D) followed by LF (U+000A)
-	// NEL:   Next Line, U+0085
-	// LS:    Line Separator, U+2028
-	// PS:    Paragraph Separator, U+2029
-	NewLineChars := "\u000a\u000b\u000c\u000d\u0085\u2028\u2029"
+func FindNewLineChar(buffer []byte) (sep string, nFound int) {
 	// A map to keep track of the # of newLine characters.
 	newLineCount := make(map[string]int, utf8.RuneCountInString(NewLineChars))
 	// offset is the starting index in the buffer for the next newLine search
@@ -444,23 +442,23 @@ func findNewLineChar(buffer []byte) (sep string) {
 		}
 	}
 	// Find the key with the biggest count
-	maxCount := -1
+	nFound = 0
 	for s, count := range newLineCount {
-		if count > maxCount {
-			maxCount = count
+		if count > nFound {
+			nFound = count
 			sep = s
 		}
 	}
-	if maxCount > 0 {
+	if nFound > 0 {
 		if IsVerbose() {
-			fmt.Printf("%s chosen as line separator with %d/%d instances.\n", strconv.Quote(sep), maxCount, newLinesForDone)
+			fmt.Printf("%s chosen as line separator with %d/%d instances.\n", strconv.Quote(sep), nFound, newLinesForDone)
 		}
 	} else {
-		// maxCount == 0
+		// nFound == 0
 		sep = defaultNewLine
 		if IsVerbose() {
 			fmt.Printf("No line NewLineChars found in buffer. Using default\n")
 		}
 	}
-	return sep
+	return sep, nFound
 }

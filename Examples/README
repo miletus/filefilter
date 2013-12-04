@@ -1,20 +1,25 @@
 inex is a command line program that demonstrates the use of the filefilter package. 
 
 Usage:
-./inex [flags] [input file] [output file]
-If input and/or output files are not given, stdin and stout are used.
--exclude and -include flags are followed by a quoted string with a single regular expression. Use single quotes for the string on the command line.
+inex [flags] [input file] [output file]
+-exclude and -include flags are followed by a single-quoted string that is a regular expression. 
+All the text that matches the include regular expressions is kept. All the text that matches the exclude regular expressions is discarded.
 Multiple -include and -exclude flags are allowed.
-If the regular expression is multi-line, use \n to represent a line break in your regular expression string even if the input has a different line break. Set the actual line break that's in the input text with the -newline flag.
 You can embed regular expression processing flags in your expression. '(?i)USA' will match with case insensitivity.
+If input and/or output files are not given, stdin and stout are used.
+Set the actual line break that's in the input text with the -newline flag. If set that new line will be used 
+for both the regular expression strings as well as the input text.
+If there is no new line flag the program will detect the new line used in the regular expressions 
+and the text. They can be different but all the new lines in the regular expressions must be 
+the same and the text can have only one type of new line.
 
 Example
-./inex -exclude '(?m)^.*aaaa.*\n' -exclude '(?m)^.*bbbb.*\n' input.txt output.txt
+inex -exclude '(?m)^.*aaaa.*\n' -exclude '(?m)^.*bbbb.*\n' input.txt output.txt
 will copy all the complete lines of text from input.txt to output.txt except for lines with aaaa or bbbb in them.
 
 Example
-The file ImportanceOfBeingEarnest.txt in the Examples directory is the first scene from Oscar Wilde's play "The Importance of Being Earnest". The following line command will give you all the lines that talk about romance. This regular expression uses the fact that in the text all each character's line is separated from the others with two new-lines. Note also that the text uses \r\n for the line separator.
-./inex -i='\n(.+\n)*.*roman.*(\n.+)*\n' -newline='\r\n' ImportanceOfBeingEarnest.txt
+The file ImportanceOfBeingEarnest.txt in the Examples directory is the first scene from Oscar Wilde's play "The Importance of Being Earnest". The following command will give you all the lines that talk about romance. This regular expression uses the fact that in the text all each character's line is separated from the others with two new-lines. Note also that the text uses \r\n for the line separator.
+./inex -i='\r\n(.+\r\n)*.*roman.*(\r\n.+)*\r\n' -newline='\r\n' ImportanceOfBeingEarnest.txt
 
 Suppose I want to see all the lines by the butler, Lane. Of course the easy way to do this would be to use the -include flag, but for the purpose of demonstration this command line excludes everything except for Lane's lines. Like many regular expressions these can be hard to understand. The easiest way to see what each -e flag is doing is to remove it from the command and see what additional text appears in the output. Note that escaping a period or a bracket takes two escape characters -> \\. and \\[ . The program will warn you if you forget the \\ for those and other special characters.
-./inex -e='(?m)^(Jack|Algernon|Gwendolen|Lady Bracknell)\\.(.+\n)*' -e='\n\n' -e='(?m)^\\[.*\n(.+\n)*' -e='(?s)^.*Algernon enters\\.\\]\n' -e='(?m)^ACT.*' -newline='\r\n' ImportanceOfBeingEarnest.txt
+./inex -e='(?m)^(Jack|Algernon|Gwendolen|Lady Bracknell)\\.(.+\n)*' -e='\n\n' -e='(?m)^\\[.*\n(.+\n)*' -e='(?s)^.*Algernon enters\\.\\]\n' -e='(?m)^ACT.*' ImportanceOfBeingEarnest.txt
